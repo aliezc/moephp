@@ -1,0 +1,5 @@
+<Files *.php>
+
+AcceptPathInfo On
+
+</Files>
