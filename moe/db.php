@@ -1,202 +1,138 @@
 <?php
-	class DB{
-		// query database use object
-		// eg. JI::select(array("table" => "user", "select" => array("name", "age"));
-		public static function select($o, $fetch=PDO::FETCH_ASSOC){
-			$sql = 'select ';
-			
-			// select
-			if($o['select']){
-				$arr = explode(',', $o['select']);
-				for($i = 0; $i < count($arr); $i++){
-					if($i == count($arr) - 1){
-						$sql .= $arr[$i] == '*' ? $arr[$i] : ('`' . $arr[$i] . '`');
+	function moe_db(){
+		if(defined('DBCONN') && defined('DBUSER') && defined('DBPWD')){
+			// if defined these const, initialize database connection
+			$limit = 10;
+			$counter = 0;
+			while (true) {
+			    try {
+			    	if(DBPERSISTENT){
+						$db = new PDO(DBCONN, DBUSER, DBPWD, array(PDO::ATTR_PERSISTENT => true));
 					}else{
-						$sql .= $arr[$i] == '*' ? ($arr[$i] . ',') : ('`' . $arr[$i] . '`,');
+						$db = new PDO(DBCONN, DBUSER, DBPWD);
 					}
-				}
-			}else{
-				$sql .= '*';
-			}
-			
-			// from
-			$sql .= ' from `' . $o['table'] . '`';
-			
-			// where
-			if(isset($o['where'])){
-				$sql .= ' where' . $o['where'];
-			}
-			
-			// order
-			if(isset($o['order'])){
-				$sql .= ' order by ' . $o['order'];
-			}
-			
-			// limit
-			if(isset($o['limit'])){
-				$sql .= ' limit ' . $o['limit'];
-			}
-			
-			return MOE::query($sql, isset($o['params']) ? $o['params'] : null);
-		}
-		
-		// insert data use object
-		// eg. JI::insert(array("table" => "user", "format" => array("k", "v")), array("k" => "sb", "v" => "bb"));
-		public static function insert($o, $data){
-			$sql = 'insert into ' . $o['table'];
-			$fmt = $o['format'];
-			
-			// table format
-			if($fmt){
-				$sql .= '(';
-				for($i = 0; $i < count($fmt); $i++){
-					$sql .= '`' . $fmt[$i] . '`';
-				}
-				$sql .= ')';
-			}
-			
-			$sql .= ' values (';
-			
-			// table vals
-			$l = '';
-			foreach($data as $k => $v){
-				$l .= ':' . $k . ',';
-			}
-			
-			$sql .= substr($l, 0, -1) . ')';
-			
-			$q = MOE::$db->prepare($sql);
-			return $q->execute($params) ? self::$db->lastInsertId() : null;
-		}
-		
-		// insert multi data
-		// like insert and data is array in array
-		public static function inserts($o, $data){
-			$sql = 'insert into ' . $o['table'];
-			$fmt = $o['format'];
-			
-			// table format
-			if($fmt){
-				$sql .= '(';
-				for($i = 0; $i < count($fmt); $i++){
-					$sql .= '`' . $fmt[$i] . '`';
-				}
-				$sql .= ')';
-			}
-			
-			$sql .= ' values (';
-			
-			// table vals
-			$l = '';
-			foreach($data as $k => $v){
-				$l .= ':' . $k . ',';
-			}
-			
-			$sql .= substr($l, 0, -1) . ')';
-			
-			$q = MOE::$db->prepare($sql);
-			$arr = array();
-			foreach($data as $d){
-				if($q->execute($d)){
-					array_push($arr, MOE::$db->lastInsertId());
-				}
-			}
-			return $arr;
-		}
-		
-		public static function update($o, $data){
-			$sql = 'update ';
-			$sql .= '`' . $o['table'] . '` set ';
-			
-			// set
-			foreach($data as $d => $v){
-				$k = substr($d, 1);
-				$sql .= '`' . $k . '`=' . $d . ',';
-			}
-			$sql = substr($sql, 0, -1);
-			
-			// where
-			if($o['where']){
-				$sql .= ' where ' . $o['where'];
-			}
-			
-			$q = MOE::$db->prepare($sql);
-			
-			// param
-			$p = $o['params'] ? array_merge($data, $o['params']) : $data;
-			
-			return $q->execute($p) ? MOE::$db->lastInsertId() : null;
-		}
-		
-		public static function delete($o){
-			$sql = 'delete from ';
-			$sql .= '`' . $o['table'];
-			
-			// where
-			if($o['where']){
-				$sql .= ' where ' . $o['where'];
-			}
-			
-			$q = MOE::$db->prepare($sql);
-			
-			return $q->execute($o['params']);
-		}
-		
-		public static function select_page($o, $start=1, $count=10, $fetch=PDO::FETCH_ASSOC){
-			$sql = 'select ';
-			
-			// select
-			if($o['select']){
-				$arr = explode($o['select']);
-				for($i = 0; $i < count($arr); $i++){
-					if($i == count($arr) - 1){
-						$sql .= $arr[$i] == '*' ? $arr[$i] : ('`' . $arr[$i] . '`');
-					}else{
-						$sql .= $arr[$i] == '*' ? ($arr[$i] . ',') : ('`' . $arr[$i] . '`,');
+					if(defined('DBUTF8')){
+						if(DBUTF8) $db->query('set names utf8');
 					}
-				}
-			}else{
-				$sql .= '*';
+					
+			        break;
+			    }
+			    catch (Exception $e) {
+			        $db = null;
+			        $counter++;
+			        if ($counter == $limit)
+			            throw $e;
+			    }
 			}
 			
-			// from
-			$sql .= ' from `' . $o['table'] . '`';
 			
-			// where
-			if(isset($o['where'])){
-				$sql .= ' where' . $o['where'];
-			}
-			
-			// order
-			if(isset($o['order'])){
-				$sql .= ' order by ' . $o['order'];
-			}
-			
-			$p = ($start - 1) * $count;
-			$limit = $p . ',' . $count;
-			$sql .= ' limit ' . $limit;
-			
-			return MOE::query($sql, isset($o['params']) ? $o['params'] : null);
+			return $db;
 		}
+	}
+
+	function moe_query($sql, $params=null, $fetch=PDO::FETCH_ASSOC){
+		$db = moe_db();
 		
-		public static function getkv($k, $table="baseinfo", $kn="name", $vn="value"){
-			$sql = 'select `' . $vn . '` from `' . $table . '` where `' . $kn . '`=:name';
-			$tmp = MOE::query($sql, array(":name" => $k));
-			if($tmp[0]){
-				return $tmp[0][$vn];
+		$q = $db->prepare($sql);
+		if($q->execute($params)){
+			if(preg_match('/^(select|show|explain|describe)/i')){
+				return $q->fetchall($fetch);
 			}else{
-				return null;
+				return true;
 			}
+		}else{
+			return false;
 		}
+	}
+	
+	function moe_select($table, $params=array(), $select='*', $where='', $order='', $limit='', $fetch=PDO::FETCH_ASSOC){
+		$sql = 'select ' . $select . 'from `' . $table . '`';
+		if(!empty($where)) $sql .= ' where ' . $where;
+		if(!empty($order)) $sql .= ' order by ' . $order;
+		if(!empty($limit)) $sql .= ' limit ' . $limit;
 		
-		public static function get_pages($table, $count=10, $where='', $params=null){
-			$sql = 'select count(*) as n from `' . $table . '`';
-			if(!empty($where)) $sql .= ' where ' . $where;
-			
-			$tmp = MOE::query($sql, $params);
-			$length = $tmp[0]['n'];
-			
-			return ceil($length / $count);
+		$db = moe_db();
+		$q = $db->prepare($sql);
+		if($q->execute($params)){
+			return $q->fetchall($fetch);
+		}else{
+			return null;
+		}
+	}
+	
+	function moe_insert($table, $data){
+		$sql = 'insert into `' . $table . '`(';
+		$a = $b = '';
+		$keys = array_keys($data);
+		foreach($keys as $k){
+			$a .= '`' . substr($k, 1) . '`,';
+			$b .= $k . ',';
+		}
+		$sql .= substr($a, 0, -1) . ') values (' . substr($b, 0, -1) . ')';
+		
+		$db = moe_db();
+		$q = $db->prepare($sql);
+		if($q->execute($data)){
+			return $db->lastInsertId();
+		}else{
+			return false;
+		}
+	}
+	
+	function moe_delete($table, $where='', $params=array()){
+		$sql = 'delete from `' . $table . '`';
+		if(!empty($where)) $sql .= ' where ' . $where;
+		
+		$db = moe_db();
+		$q = $db->prepare($sql);
+		return $q->execute($params);
+	}
+	
+	function moe_update($table, $where='', $data=array(), $params = array()){
+		$sql = 'update `' . $table . '` set ';
+		$s = '';
+		$keys = array_keys($data);
+		foreach($keys as $k){
+			$s .= '`' . substr($k, 1) . '`=' . $k . ',';
+		}
+		$sql .= substr($s, 0, -1);
+		if(!empty($where)) $sql .= ' where ' . $where;
+		
+		$db = moe_db();
+		$q = $db->prepare($sql);
+		return $q->execute(array_merge($data, $params));
+	}
+	
+	function moe_prepare($sql){
+		$db = moe_db();
+		return $db->prepare($sql);
+	}
+	
+	function moe_exec($stmt, $params=array()){
+		return $stmt->execute($params);
+	}
+	
+	function moe_rowcount($table, $where='', $params=array()){
+		$sql = 'select count(*) as cnt from `' . $table . '`';
+		if(!empty($where)) $sql .= ' where ' . $where;
+		
+		$db = moe_db();
+		$q = $db->prepare($sql);
+		$q->execute($params);
+		$res = $q->fetch(PDO::FETCH_ASSOC);
+		return $res['cnt'];
+	}
+	
+	function moe_getkv($k, $table='baseinfo', $key='name', $value='value'){
+		$sql = 'select `' . $value . '` from `' . $table . '` where `' . $key . '`=:name';
+		
+		$db = moe_db();
+		$q = $db->prepare($sql);
+		if($q->execute(array(":name" => $k))){
+			if($res = $q->fetch(PDO::FETCH_ASSOC)) return $res[$value];
+			else return null;
+		}else{
+			return null;
 		}
 	}
 ?>
